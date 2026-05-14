@@ -92,34 +92,26 @@ additional `bindings_alloc_bench_test.go` with `BenchmarkPrepare_*`,
 
 ## Reproducing
 
-The full harness used for the table above lives in
-`cpu_bench/` of the fork branch:
+The numbers above come from a small Go harness that compiles the
+**same** workload twice — once against
+`github.com/duckdb/duckdb-go-bindings@v0.10502.0` (this base), and
+once against the fork tree via `go.mod replace`. It runs both
+binaries sequentially and reports, per scenario:
 
-```bash
-git clone --branch bench-duckdb-adubovikov \
-  https://github.com/adubovikov/duckdb-go-bindings
-cd duckdb-go-bindings/cpu_bench
-./run.sh -scale 0.25 -runs 3        # ~110 s
-./run.sh                            # full default run (~7-8 min)
-```
+* median `wall ns/op` and `cpu ns/op` (from
+  `syscall.Getrusage(RUSAGE_SELF)`),
+* `cgo calls/op` (delta of `runtime.NumCgoCall`),
+* Go-heap `allocs/op` and `bytes/op` (delta of `runtime.MemStats`).
 
-The harness:
+It also captures **whole-process** `user/sys/wall/MaxRSS` via
+`os/exec` for the headline number above. `GOGC=off` is set during the
+run so Go GC events do not perturb timing.
 
-* compiles the **same** workload twice — once against
-  `github.com/duckdb/duckdb-go-bindings@v0.10502.0` (upstream), once
-  with `go.mod replace` pointing at the fork tree;
-* per scenario reports median `wall ns/op`, `cpu ns/op` (from
-  `getrusage(RUSAGE_SELF)`), `cgo calls/op` (from
-  `runtime.NumCgoCall`), `Go allocs/op` and `bytes/op`;
-* per process reports total `user/sys/wall/MaxRSS` (from `os/exec`
-  rusage).
-
-`GOGC=off` is set during the run so Go GC events don't perturb timing.
-
-Full English report with methodology and per-scenario interpretation:
-[`cpu_bench/REPORT.md`](cpu_bench/REPORT.md). Raw JSON used to
-generate the tables above is committed at
-[`cpu_bench/result.json`](cpu_bench/result.json).
+The harness is not part of this PR (kept small and focused). I am
+happy to send it as a follow-up PR, or as a separate sub-directory if
+maintainers prefer to have it in-tree for future regression checks.
+Reviewers who want to reproduce on their hardware can ping me on the
+PR and I'll publish the branch.
 
 ## Checklist
 
@@ -127,7 +119,7 @@ generate the tables above is committed at
 - [x] No public-API changes
 - [x] No new third-party dependencies
 - [x] Benchmarks added (`bindings_alloc_bench_test.go`)
-- [x] CPU benchmark harness against unmodified upstream attached
+- [x] CPU benchmark harness against unmodified upstream available on request (kept out of this PR for review focus)
 - [ ] Reviewer guidance on whether to split into two commits or
       squash on merge — happy either way.
 
